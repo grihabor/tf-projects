@@ -13,6 +13,7 @@ sess = tf.InteractiveSession()
 x = tf.placeholder(tf.float32, shape=[None, 784])
 y_ = tf.placeholder(tf.float32, shape=[None, 10])
 
+'''
 W = tf.Variable(tf.zeros([784,10]))
 b = tf.Variable(tf.zeros([10]))
 
@@ -30,7 +31,7 @@ for i in range(1000):
 correct_prediction = tf.equal(tf.argmax(y,1), tf.argmax(y_,1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 print(accuracy.eval(feed_dict={x: mnist.test.images, y_: mnist.test.labels}))
-
+'''
 
 def weight_variable(shape):
   initial = tf.truncated_normal(shape, stddev=0.1)
@@ -72,9 +73,7 @@ h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
 
 #Dropout
 keep_prob = tf.placeholder(tf.float32)
-h_fc1_drop = tf.nn.
-
-(h_fc1, keep_prob)
+h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
 
 #Readout Layer
 W_fc2 = weight_variable([1024, 10])
