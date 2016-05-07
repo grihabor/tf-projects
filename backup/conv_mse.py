@@ -7,9 +7,8 @@ from skimage import transform
 #unused
 var_list = []
 
-batch_size = 4
+batch_size = 1
 out_size = 256*256
-
 
 data_dir = '../data/'
 input_dir = data_dir + 'input/'
@@ -79,7 +78,7 @@ x_image = tf.reshape(x, [-1, 256, 256, 1])
 W_conv1 = weight_variable([3, 3, 1, 64])
 b_conv1 = bias_variable([64])
 
-h_conv1 = tf.nn.elu(conv2d(x_image, W_conv1) + b_conv1)
+h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
 h_pool1 = max_pool_2x2(h_conv1)
 #[-1, 128, 128, 64]
 
@@ -87,7 +86,7 @@ h_pool1 = max_pool_2x2(h_conv1)
 W_conv2 = weight_variable([3, 3, 64, 128])
 b_conv2 = bias_variable([128])
 
-h_conv2 = tf.nn.elu(conv2d(h_pool1, W_conv2) + b_conv2)
+h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
 h_pool2 = max_pool_2x2(h_conv2)
 #[-1, 64, 64, 128]
 
@@ -95,7 +94,7 @@ h_pool2 = max_pool_2x2(h_conv2)
 W_conv3 = weight_variable([3, 3, 128, 256])
 b_conv3 = bias_variable([256])
 
-h_conv3 = tf.nn.elu(conv2d(h_pool2, W_conv3) + b_conv3)
+h_conv3 = tf.nn.relu(conv2d(h_pool2, W_conv3) + b_conv3)
 h_pool3 = max_pool_2x2(h_conv3)
 #[-1, 32, 32, 256]
 
@@ -103,7 +102,7 @@ h_pool3 = max_pool_2x2(h_conv3)
 W_conv4 = weight_variable([3, 3, 256, 512])
 b_conv4 = bias_variable([512])
 
-h_conv4 = tf.nn.elu(conv2d(h_pool3, W_conv4) + b_conv4)
+h_conv4 = tf.nn.relu(conv2d(h_pool3, W_conv4) + b_conv4)
 h_pool4 = max_pool_2x2(h_conv4)
 #[-1, 16, 16, 512]
 
@@ -111,39 +110,41 @@ h_pool4 = max_pool_2x2(h_conv4)
 W_conv5 = weight_variable([7, 7, 512, 4096])
 b_conv5 = bias_variable([4096])
 
-h_conv5 = tf.nn.elu(conv2d(h_pool4, W_conv5) + b_conv5)
+h_conv5 = tf.nn.relu(conv2d(h_pool4, W_conv5) + b_conv5)
 #[-1, 16, 16, 4096]
 
 #Dropout
 keep_prob = tf.placeholder(tf.float32)
-h_drop2 = tf.nn.dropout(h_conv5, keep_prob)
+h_drop1 = tf.nn.dropout(h_conv5, keep_prob)
 
-#Seventh Convolutional Layer
-W_conv7 = weight_variable([1, 1, 4096, 32])
-b_conv7 = bias_variable([32])
+#Sixth Convolutional Layer
+W_conv6 = weight_variable([1, 1, 4096, 4096])
+b_conv6 = bias_variable([4096])
 
-h_conv7 = tf.nn.elu(conv2d(h_drop2, W_conv7) + b_conv7)
-#[-1, 16, 16, 32]
-
-#Densely Connected Layer
-W_fc1 = weight_variable([16 * 16 * 32, 1024*3])
-b_fc1 = bias_variable([1024*3])
-
-h_pool2_flat = tf.reshape(h_conv7, [-1, 16*16*32])
-h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
+h_conv6 = tf.nn.relu(conv2d(h_drop1, W_conv6) + b_conv6)
+#[-1, 16, 16, 4096]
 
 #Dropout
-keep_prob = tf.placeholder(tf.float32)
-h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
+h_drop2 = tf.nn.dropout(h_conv6, keep_prob)
 
-#Readout Layer
-W_fc2 = weight_variable([1024, 10])
-b_fc2 = bias_variable([10])
+#Seventh Convolutional Layer
+W_conv7 = weight_variable([1, 1, 4096, 64])
+b_conv7 = bias_variable([64])
 
-y_conv=tf.nn.softmax(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
+h_conv7 = tf.nn.relu(conv2d(h_drop2, W_conv7) + b_conv7)
+#[-1, 16, 16, 32]
 
-#max box 65 60
+#Deconvolutional Layer
+W_deconv = weight_variable([64, 64, 3, 64])
+b_deconv = bias_variable([64])
 
+y_conv = tf.nn.conv2d_transpose(
+    h_conv7 + b_deconv, 
+    W_deconv,
+    [batch_size, 256, 256, 3],
+    #y_.get_shape(),
+    [1,16,16,1], 
+    padding='SAME')
 
 #print(transpose)
 #y_conv = tf.Print(y_conv, [y_conv], "y_conv: ")
@@ -155,7 +156,9 @@ y_conv = tf.reshape(y_conv, [-1, 3])
 y_in = tf.to_int64(tf.reshape(y_, [-1]))
 
 cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(y_conv, y_in)
-train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
+cross_entropy = tf.reduce_mean(cross_entropy)
+cross_entropy = tf.Print(cross_entropy, [cross_entropy], "cross_entropy: ")
+
 
 saver = tf.train.Saver()
 
@@ -164,13 +167,18 @@ y_fin = tf.one_hot(y_in, 3, 1., 0.)
 print('y_prob shape: ', y_prob.get_shape())
 print('y_fin  shape: ', y_fin.get_shape())
 
-squared_error = tf.reduce_sum(tf.squared_difference(y_prob, y_fin))
+
+
+squared_error = tf.reduce_sum(tf.nn.l2_loss(y_prob - y_fin))
 accuracy = tf.reduce_mean(tf.div(squared_error, tf.reduce_sum(y_fin)))
+
+train_step = tf.train.AdamOptimizer(1e-8).minimize(squared_error)
+
+SHOW_PLOTS = False
+
 sess.run(tf.initialize_all_variables())
 
-SHOW_PLOTS = True
-
-#saver.restore(sess, 'my-model-3550')
+#saver.restore(sess, 'my-model-50')
 
 for i in range(20000):
     batch = next_batch(batch_size)
@@ -178,16 +186,22 @@ for i in range(20000):
 
     #print(squared_error.eval(feed_dict={x: batch[0], y_: batch[1], keep_prob: 1.}))
 
-    if i%10 == 0:
+    if i%100 == 0:
 
         inp = y_fin.eval({y_: batch[1]})
         inp = np.reshape(inp, (batch_size, 256, 256, 3))
         out = y_prob.eval(feed_dict={x:batch[0], keep_prob: 1.})
         out = np.reshape(out, (batch_size, 256, 256, 3))
         
-        out2 = h_conv7.eval(feed_dict={x:batch[0], keep_prob: 1.})
-        print(out2)
+        #print(out)
+        '''
+        t = (h_conv7.eval(feed_dict={x:batch[0], keep_prob: 1.}))
+        for tt in t:
+            for ttt in tt:
+                for tttt in ttt:
+                    print(tttt)
         
+        '''
         if SHOW_PLOTS:
             for j in range(3):
                 plt.subplot(2, 3, j+1)

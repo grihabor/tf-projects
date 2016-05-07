@@ -1,0 +1,6 @@
+model_checkpoint_path: "my-model-3550"
+all_model_checkpoint_paths: "my-model-3350"
+all_model_checkpoint_paths: "my-model-3400"
+all_model_checkpoint_paths: "my-model-3450"
+all_model_checkpoint_paths: "my-model-3500"
+all_model_checkpoint_paths: "my-model-3550"
