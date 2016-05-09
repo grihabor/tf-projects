@@ -96,12 +96,12 @@ while True:
                 
 
                 if cur_batch[0] is None:
-                    cur_batch[0] = np.array([mask], dtype=np.int8)
-                    cur_batch[1] = np.array([slice], dtype=np.float16)
+                    cur_batch[0] = np.array([slice], dtype=np.float16)
+                    cur_batch[1] = np.array([mask], dtype=np.int8)
                     cur_batch[2] = np.array([bbox], dtype=np.int32)
                 else:
-                    cur_batch[0] = np.append(cur_batch[0], [mask], axis=0)
-                    cur_batch[1] = np.append(cur_batch[1], [slice], axis=0)
+                    cur_batch[0] = np.append(cur_batch[0], [slice], axis=0)
+                    cur_batch[1] = np.append(cur_batch[1], [mask], axis=0)
                     cur_batch[2] = np.append(cur_batch[2], [bbox], axis=0)
                 '''
                 if count % batch_size == 0:                    
